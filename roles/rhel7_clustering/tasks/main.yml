@@ -1,0 +1,33 @@
+---
+# tasks file for rhel7_clustering
+
+- block:
+  - name: Determine if firewalld is running
+    command: firewall-cmd --state
+    register: firewalld_running
+    failed_when: false
+    ignore_errors: true
+    changed_when: false
+
+  - name: Determine if firewalld is enabled
+    command: systemctl list-unit-files
+    register: systemctl_unit_files
+    changed_when: false
+  tags:
+  - fence_setting_env
+
+
+- include_tasks: installation.yml
+  tags:
+  - cluster_auth
+  - cluster_status
+  - cluster_config
+
+- include_tasks: kdump_fence.yml
+  tags:
+  - fence_setting_env
+  - fence_setting
+
+- include_tasks: resources.yml
+  tags:
+  - resource_setting

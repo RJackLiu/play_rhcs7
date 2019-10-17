@@ -1,0 +1,64 @@
+- name: "Configuring kdump fencing env"
+  block:
+  - name: Enable Kdump fencing ports
+    firewalld:
+      port: 7410/udp
+      permanent: yes
+      state: enabled
+      immediate: yes
+    when: >
+      firewalld_running.rc == 0 or
+      systemctl_unit_files.stdout_lines | select('match','firewalld.service\s+enabled') | list | length == 1
+
+
+  - name: enable service pcsd and ensure it is not masked
+    systemd:
+      name: "kdump.service"
+      enabled: yes
+      state: started
+      masked: no
+
+  - file:
+      src: '/usr/libexec/fence_kdump_send'
+      dest: '/usr/sbin/fence_kdump_send'
+      state: link  
+
+  - set_fact:
+      fence_kdump_nodes: "{{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ fence_kdump_nodes }}"
+    loop: "{{ groups.all }}"
+    when:
+    - item != inventory_hostname
+
+  - lineinfile:
+      dest: /etc/kdump.conf
+      line: "{{ item }}"
+    loop:
+    - fence_kdump_args -c 120 -i 1
+    - fence_kdump_nodes {{ fence_kdump_nodes }}
+
+  - lineinfile:
+      dest: /etc/hosts
+      line: "{{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ hostvars[item]['ansible_fqdn'] }} {{ item }}"   
+    loop: "{{ groups.all }}"
+
+  tags: fence_setting_env
+
+- name: "Configuring kdump fencing"
+  block:
+  - shell: >
+      pcs stonith create kdump fence_kdump 
+        pcmk_host_check=static-list 
+        pcmk_host_list={{ groups.all | join(' ') | quote }} 
+        pcmk_monitor_action=metadata 
+        pcmk_off_timeout=120s 
+        pcmk_reboot_action=off 
+        pcmk_status_action=metadata 
+        timeout=120s 
+    notify: cluster_status
+
+
+  - shell: |
+      pcs stonith level add 1 {{ item }} kdump
+    loop: "{{ groups.all }}"
+  when: inventory_hostname == groups.all[0]
+  tags: fence_setting

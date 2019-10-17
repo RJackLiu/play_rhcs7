@@ -1,0 +1,70 @@
+- name: Register and subscribe to pools.
+  redhat_subscription:
+    state: present
+    username: "{{ redhat_subscription_name }}"
+    password: "{{ redhat_subscription_pass }}"
+    pool_ids:
+      - 8a85f98460bfb0470160c2ff22f13e47
+
+- name: Disable all RHSM repositories
+  rhsm_repository:
+    name: '*'
+    state: disabled
+
+- name: Enable xall repositories starting with 
+  rhsm_repository:
+    name: "{{ item }}"
+    state: enabled
+  loop: "{{ rhsm_repo }}"
+
+- name: upgrade all packages
+  yum:
+    name: '*'
+    state: latest
+
+- name: Install a list of packages
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ yum_list }}"
+
+- firewalld:
+    service: "{{ item }}"
+    permanent: yes
+    state: enabled
+  loop: "{{ firewalld_services }}"
+  when: >
+    firewalld_running.rc == 0 or
+    systemctl_unit_files.stdout_lines | select('match','firewalld.service\s+enabled') | list | length == 1
+
+- name: enable service pcsd and ensure it is not masked
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+    masked: no
+  loop: "{{ systemd_list }}"
+
+- user:
+    name: "{{ ha_user_name }}"
+    password: "{{ default_user_pass | password_hash('sha512') }}"
+    shell: /bin/bash
+    expires: -1
+
+- shell: >
+    pcs cluster auth -u {{ ha_user_name }} -p {{ default_user_pass }} {{ item }}
+  when: inventory_hostname == groups.all[0] 
+  loop: "{{ groups.all }}"
+  tags: cluster_auth
+  notify: cluster_status
+
+- name: "Configuring basic cluster communication"
+  block:
+  - shell: |
+      pcs cluster setup --start --name {{ pcs_cluster_name }} {{ groups.all | join(' ') }}
+      pcs cluster sync
+      pcs cluster start --all
+      pcs cluster enable --all
+    notify: cluster_status
+  when: inventory_hostname == groups.all[0]
+  tags: cluster_config

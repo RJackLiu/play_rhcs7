@@ -1,0 +1,10 @@
+- name: "Configuring resources"
+  block:
+  - shell: |
+      pcs resource create webIP IPaddr2 ip=192.168.150.210 cidr_netmask=24 --group myweb
+      pcs resource create webserver apache configfile="/etc/httpd/conf/httpd.conf" statusurl="http://127.0.0.1/server-status" --group myweb
+      pcs resource op remove webserver monitor
+      pcs resource op add webserver  monitor interval=10s timeout=15s on-fail=fence
+    notify: cluster_status
+  when: inventory_hostname == groups.all[0]
+  tags: resource_setting
