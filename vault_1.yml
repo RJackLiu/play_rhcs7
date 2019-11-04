@@ -1,2 +1,3 @@
-redhat_subscription_name: "Input Your Red Hat Subscription Account"
 default_user_pass: "Input Your Password for Cluster System Account"
+rhsm_username: "Input Your Red Hat Subscription Account"
+rhsm_poolID: "Input Your Red Hat Pool ID"

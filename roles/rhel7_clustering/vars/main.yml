@@ -1,2 +1,36 @@
 ---
 # vars file for rhel7_clustering
+
+rhsm_username: ""
+rhsm_password: ""
+rhsm_poolID: ""
+
+rhsm_repo:
+#- rhel-server-rhscl-7-rpms
+#- rhel-7-server-insights-3-rpms
+#- rhel-7-server-satellite-tools-6.5-rpms
+#- rhel-7-server-extras-source-rpms
+#- rhel-7-server-optional-rpms
+- rhel-ha-for-rhel-7-server-rpms
+#- rhel-rs-for-rhel-7-server-rpms
+- rhel-7-server-rpms
+
+yum_list:
+- pcs
+- fence-agents-all
+- httpd
+- nmap-ncat
+- kexec-tools
+- elinks
+
+firewalld_services:
+- high-availability
+
+systemd_list:
+- pcsd.service
+
+ha_user_name: hacluster
+
+pcs_cluster_name: cluster01
+
+fence_kdump_nodes: ""

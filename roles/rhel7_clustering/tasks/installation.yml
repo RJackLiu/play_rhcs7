@@ -1,10 +1,9 @@
 - name: Register and subscribe to pools.
   redhat_subscription:
     state: present
-    username: "{{ redhat_subscription_name }}"
-    password: "{{ redhat_subscription_pass }}"
-    pool_ids:
-      - 8a85f98460bfb0470160c2ff22f13e47
+    username: "{{ rhsm_username }}"
+    password: "{{ rhsm_password }}"
+    pool_ids: "{{ rhsm_poolID }}"
 
 - name: Disable all RHSM repositories
   rhsm_repository:
